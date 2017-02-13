@@ -63,20 +63,21 @@ This bot demonstrates many of the core features of Botkit:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
+let cegit = require('./gitfunctions.js');
 
 if (!process.env.token) {
     console.log('Error: Specify token in environment');
     process.exit(1);
 }
 
-var Botkit = require('./lib/Botkit.js');
-var os = require('os');
+let Botkit = require('./lib/Botkit.js');
+let os = require('os');
 
-var controller = Botkit.slackbot({
+let controller = Botkit.slackbot({
     debug: true,
 });
 
-var bot = controller.spawn({
+let bot = controller.spawn({
     token: process.env.token
 }).startRTM();
 
@@ -103,7 +104,7 @@ controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', funct
 });
 
 controller.hears(['call me (.*)', 'my name is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
-    var name = message.match[1];
+    let name = message.match[1];
     controller.storage.users.get(message.user, function(err, user) {
         if (!user) {
             user = {
@@ -185,6 +186,115 @@ controller.hears(['what is my name', 'who am i'], 'direct_message,direct_mention
     });
 });
 
+/* controller.hears(['stage (?:the )?(.*) (?:with)? (.*)?','stage'], 'direct_message', function(bot, message) {
+    let branchString = "";
+    let branches = [];
+    let project;
+
+    bot.startConversation(message, function(err, convo) {
+        if (!err) {
+            if (message.match[1] !== undefined) {
+                project = message.match[1];
+            }
+
+            if (message.match[2] !== undefined) {
+                branchString = message.match[2];
+                branches = branchString.replace(/,|and /g,"").split(" ");
+            }
+
+            switch (project) {
+                case 'website':
+                    if(branches.length < 1) {
+                        convo.say("The website is made up of multiple repos. Since you didn't specify any branches, I'm assuming you want me to stage the Master branch of each related Repo. Is that correct?\n\n");
+                    } else {
+                        convo.say("I will include " + branchString);
+                    }
+
+
+                    break;
+
+                case 'webadmin':
+                    convo.say("As you know, webadmin relies on the API? Is there a particular repo you want me to use?")
+
+                    break;
+
+                default:
+                convo.say("I'd love to help, but I have no idea what " + project + " is.");
+            }
+        }
+    });
+});
+
+*/
+
+controller.hears(['stage webadmin'], 'direct_message', function(bot, message) {
+
+    let stagePlan = {};
+    stagePlan.repo = "webadmin";
+
+
+    let webAdminBranch = function(err, convo) {
+        // how about presenting master and the 3 most recently update branches for each repo and giving buttons. User can type their branch or click a button.
+
+        branches = cegit.getActiveBranches("Node-Webadmin", function (branches) {
+
+            console.log(branches);
+
+            if (branches.length > 1) {
+                convo.ask("Sure thing. Which branch of WebAdmin would you like me to stage?", function(response, convo) {
+
+                    for (let i = 0; i < branches.length; i++) {
+                        if (branches[i].name === response.text) {
+                            stagePlan.branch = response.text;
+                            webAPIBranch(response, convo);
+                            convo.next();
+                        }
+                    }
+
+                    webBadBranch(response, convo);
+                    convo.next;
+//                    stagePlan.branch = response.text;
+//                    webAPIBranch(response, convo);
+//                    convo.next();
+                });
+            } else if (branches.length === 1) {
+                convo.ask("Sure thing. I'm only seeing the *Master* branch right now. Is that what you want me to stage?");
+                stagePlan.branch = "master";
+                    webAPIBranch(response, convo);
+                    convo.next();
+            } else {
+                convo.say("Hmm.  Something's not right.  Please try again later.");
+            }
+
+        });
+
+
+    };
+
+    let webBadBranch = function(err, convo) {
+        convo.ask("Hmmm.  Not familiar with that branch.  Want to try again?", function(response, convo) {
+
+        });
+    }
+
+    let webAPIBranch = function(err, convo) {
+        convo.ask('And which branch of API do you want?', function(response, convo) {
+            stagePlan.api = response.text;
+            convo.say("Got it.  Here's the plan:\n\n I'm going to stage the *" + stagePlan.branch + "* of WebAdmin using the " + stagePlan.api + " branch of the API.");
+            convo.next();
+        });
+    }
+
+
+    // Offer a summmary with Accept or Reject Buttons.
+
+    bot.startConversation(message, webAdminBranch);
+
+
+
+
+});
+
 
 controller.hears(['shutdown'], 'direct_message,direct_mention,mention', function(bot, message) {
 
@@ -217,8 +327,8 @@ controller.hears(['shutdown'], 'direct_message,direct_mention,mention', function
 controller.hears(['uptime', 'identify yourself', 'who are you', 'what is your name'],
     'direct_message,direct_mention,mention', function(bot, message) {
 
-        var hostname = os.hostname();
-        var uptime = formatUptime(process.uptime());
+        let hostname = os.hostname();
+        let uptime = formatUptime(process.uptime());
 
         bot.reply(message,
             ':robot_face: I am a bot named <@' + bot.identity.name +
@@ -227,7 +337,7 @@ controller.hears(['uptime', 'identify yourself', 'who are you', 'what is your na
     });
 
 function formatUptime(uptime) {
-    var unit = 'second';
+    let unit = 'second';
     if (uptime > 60) {
         uptime = uptime / 60;
         unit = 'minute';
