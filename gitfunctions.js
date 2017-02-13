@@ -17,7 +17,7 @@ let github = new GitHubApi({
 
 github.authenticate({
     type: "oauth",
-    token: "331e2da771ddc0ab3dc5e2e594911c8109c7e513",
+    token: process.env.gittoken
 });
 
 
